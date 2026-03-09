@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Plus, Edit, User, Mail, Phone, Building2 } from "lucide-react";
+import { Search, Plus, Edit, User, Trash2 } from "lucide-react";
 import { formatPKR } from "@/lib/currency";
 import { AddEmployeeDialog } from "@/components/employees/AddEmployeeDialog";
 
@@ -34,7 +35,6 @@ const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
   inactive: "bg-muted text-muted-foreground border-border",
   on_leave: "bg-warning/10 text-warning border-warning/20",
-  terminated: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const Employees = () => {
@@ -44,6 +44,8 @@ const Employees = () => {
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
   const { hasRole } = useAuth();
   const canManage = hasRole("admin") || hasRole("hr_manager");
@@ -100,6 +102,35 @@ const Employees = () => {
       toast({ title: "Employee updated" });
       setDialogOpen(false);
       fetchEmployees();
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("delete-employee", {
+        body: { employee_user_id: deleteTarget.user_id },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+
+      if (res.error || res.data?.error) {
+        toast({
+          variant: "destructive",
+          title: "Delete failed",
+          description: res.data?.error || res.error?.message,
+        });
+      } else {
+        toast({ title: "Employee deleted", description: `${deleteTarget.full_name} and all associated records have been permanently removed.` });
+        setDeleteTarget(null);
+        setDialogOpen(false);
+        fetchEmployees();
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Delete failed", description: err.message });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -167,7 +198,7 @@ const Employees = () => {
                     {emp.basic_salary != null ? formatPKR(emp.basic_salary) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant="outline" className={statusColors[emp.status || "active"]}>
+                    <Badge variant="outline" className={statusColors[emp.status || "active"] || "bg-muted text-muted-foreground border-border"}>
                       {(emp.status || "active").replace("_", " ")}
                     </Badge>
                   </TableCell>
@@ -223,7 +254,6 @@ const Employees = () => {
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                     <SelectItem value="on_leave">On Leave</SelectItem>
-                    <SelectItem value="terminated">Terminated</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -241,6 +271,23 @@ const Employees = () => {
                   />
                 </div>
               </div>
+
+              {/* Danger zone */}
+              {canManage && editEmployee && (
+                <div className="col-span-2 pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-2">Danger Zone</p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setDeleteTarget(editEmployee)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Employee
+                  </Button>
+                </div>
+              )}
+
               <div className="col-span-2 flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSave}>Save Changes</Button>
@@ -248,6 +295,38 @@ const Employees = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Employee Permanently?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="block">
+                  You are about to permanently delete <strong>{deleteTarget?.full_name}</strong>. This action <strong>cannot be undone</strong>.
+                </span>
+                <span className="block text-destructive font-medium mt-2">The following will be permanently deleted:</span>
+                <ul className="list-disc list-inside text-sm space-y-1 mt-1">
+                  <li>Employee profile &amp; account</li>
+                  <li>All attendance records</li>
+                  <li>All leave requests</li>
+                  <li>All payroll items</li>
+                  <li>All shift assignments</li>
+                </ul>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteLoading ? "Deleting..." : "Yes, Delete Permanently"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add Employee Dialog */}
         <AddEmployeeDialog
