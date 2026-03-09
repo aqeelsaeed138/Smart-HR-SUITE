@@ -190,7 +190,7 @@ const Payroll = () => {
                         )}
                         {p.status === "confirmed" && (
                           <Button variant="ghost" size="sm" onClick={() => markPaid(p.id)}>
-                            <DollarSign className="w-3.5 h-3.5 mr-1" />Mark Paid
+                            <Banknote className="w-3.5 h-3.5 mr-1" />Mark Paid
                           </Button>
                         )}
                       </div>
