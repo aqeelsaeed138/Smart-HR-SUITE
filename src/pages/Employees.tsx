@@ -75,7 +75,8 @@ const Employees = () => {
       full_name: emp.full_name, email: emp.email,
       department: emp.department || "", position: emp.position || "",
       employee_id: emp.employee_id || "", phone: emp.phone || "",
-      status: emp.status || "active", hire_date: emp.hire_date || ""
+      status: emp.status || "active", hire_date: emp.hire_date || "",
+      basic_salary: emp.basic_salary != null ? String(emp.basic_salary) : "",
     });
     setDialogOpen(true);
   };
@@ -90,6 +91,7 @@ const Employees = () => {
       phone: form.phone || null,
       status: form.status || "active",
       hire_date: form.hire_date || null,
+      basic_salary: form.basic_salary ? Number(form.basic_salary) : null,
     }).eq("id", editEmployee.id);
 
     if (error) {
