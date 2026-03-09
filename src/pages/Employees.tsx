@@ -138,15 +138,16 @@ const Employees = () => {
                 <TableHead>Employee</TableHead>
                 <TableHead className="hidden md:table-cell">Department</TableHead>
                 <TableHead className="hidden md:table-cell">Position</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Basic Salary</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 {canManage && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Loading...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No employees found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No employees found</TableCell></TableRow>
               ) : filtered.map((emp) => (
                 <TableRow key={emp.id}>
                   <TableCell>
@@ -162,6 +163,9 @@ const Employees = () => {
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{emp.department || "—"}</TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{emp.position || "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-right font-medium text-foreground">
+                    {emp.basic_salary != null ? formatPKR(emp.basic_salary) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className={statusColors[emp.status || "active"]}>
                       {(emp.status || "active").replace("_", " ")}
