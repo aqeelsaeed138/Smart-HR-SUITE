@@ -141,18 +141,32 @@ const AdminDashboard = () => {
           <TrendingUp className="w-4 h-4 text-primary" /> Workforce Overview
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Active", value: stats.totalEmployees, icon: CheckCircle, color: "text-success" },
-            { label: "Departments", value: "—", icon: Users, color: "text-primary" },
-            { label: "Avg. Hours", value: "—", icon: Clock, color: "text-info" },
-            { label: "Payroll Cost", value: "—", icon: Banknote, color: "text-warning" },
-          ].map((item) => (
-            <div key={item.label} className="text-center p-3 rounded-lg bg-muted/50">
-              <item.icon className={`w-5 h-5 mx-auto mb-1 ${item.color}`} />
-              <p className="text-lg font-bold text-foreground">{item.value}</p>
-              <p className="text-xs text-muted-foreground">{item.label}</p>
-            </div>
-          ))}
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <CheckCircle className="w-5 h-5 mx-auto mb-1 text-success" />
+            <p className="text-lg font-bold text-foreground">{workforce.active}</p>
+            <p className="text-xs text-muted-foreground">Active</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="text-lg font-bold text-foreground">{workforce.departments > 0 ? workforce.departments : "—"}</p>
+            <p className="text-xs text-muted-foreground">Departments</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Clock className="w-5 h-5 mx-auto mb-1 text-info" />
+            <p className="text-lg font-bold text-foreground">
+              {workforce.avgHoursToday !== null ? `${workforce.avgHoursToday}h` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">Avg. Hours Today</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Banknote className="w-5 h-5 mx-auto mb-1 text-warning" />
+            <p className="text-lg font-bold text-foreground">
+              {workforce.payrollCost !== null
+                ? `Rs ${(workforce.payrollCost / 1000).toFixed(0)}K`
+                : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">Payroll Cost</p>
+          </div>
         </div>
       </Card>
     </>
