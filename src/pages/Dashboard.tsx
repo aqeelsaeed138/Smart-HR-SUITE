@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users, Clock, CalendarDays, DollarSign, TrendingUp, AlertTriangle,
+  Users, Clock, CalendarDays, Banknote, TrendingUp, AlertTriangle,
   CheckCircle, UserCheck, LogIn, LogOut, CalendarClock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
             { label: "Active", value: stats.totalEmployees, icon: CheckCircle, color: "text-success" },
             { label: "Departments", value: "—", icon: Users, color: "text-primary" },
             { label: "Avg. Hours", value: "—", icon: Clock, color: "text-info" },
-            { label: "Payroll Cost", value: "—", icon: DollarSign, color: "text-warning" },
+            { label: "Payroll Cost", value: "—", icon: Banknote, color: "text-warning" },
           ].map((item) => (
             <div key={item.label} className="text-center p-3 rounded-lg bg-muted/50">
               <item.icon className={`w-5 h-5 mx-auto mb-1 ${item.color}`} />

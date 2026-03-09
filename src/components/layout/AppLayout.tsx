@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Clock, CalendarDays, CalendarClock,
-  DollarSign, FileText, Settings, LogOut, ChevronLeft, ChevronRight,
+  Banknote, FileText, Settings, LogOut, ChevronLeft, ChevronRight,
   Shield, Menu, X, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ const navItems = [
   { path: "/attendance", label: "Attendance", icon: Clock },
   { path: "/leaves", label: "Leave Management", icon: CalendarDays },
   { path: "/shifts", label: "Shifts & Roster", icon: CalendarClock },
-  { path: "/payroll", label: "Payroll", icon: DollarSign },
+  { path: "/payroll", label: "Payroll", icon: Banknote },
   { path: "/audit-log", label: "Audit Log", icon: FileText, roles: ["admin", "hr_manager"] as const },
   { path: "/settings", label: "Settings", icon: Settings },
 ];

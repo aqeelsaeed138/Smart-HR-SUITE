@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, FileText, Download, Plus, Play, CheckCircle, Eye } from "lucide-react";
+import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye } from "lucide-react";
+import { formatPKR } from "@/lib/currency";
 import { CreatePayrollDialog } from "@/components/payroll/CreatePayrollDialog";
 import { GeneratePayrollDialog } from "@/components/payroll/GeneratePayrollDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +115,7 @@ const Payroll = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-5 shadow-card">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-primary/10"><DollarSign className="w-5 h-5 text-primary" /></div>
+              <div className="p-2.5 rounded-lg bg-primary/10"><Banknote className="w-5 h-5 text-primary" /></div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Periods</p>
                 <p className="text-xl font-bold text-foreground">{periods.length}</p>
@@ -189,7 +190,7 @@ const Payroll = () => {
                         )}
                         {p.status === "confirmed" && (
                           <Button variant="ghost" size="sm" onClick={() => markPaid(p.id)}>
-                            <DollarSign className="w-3.5 h-3.5 mr-1" />Mark Paid
+                            <Banknote className="w-3.5 h-3.5 mr-1" />Mark Paid
                           </Button>
                         )}
                       </div>
@@ -238,10 +239,10 @@ const Payroll = () => {
               ) : payrollItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium text-sm">{item.profiles?.full_name}</TableCell>
-                  <TableCell className="text-right text-sm">${Number(item.basic_salary).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">${Number(item.tax).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm">${Number(item.deductions).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm font-semibold">${Number(item.net_pay).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm">{formatPKR(Number(item.basic_salary))}</TableCell>
+                  <TableCell className="text-right text-sm text-destructive">{formatPKR(Number(item.tax))}</TableCell>
+                  <TableCell className="text-right text-sm">{formatPKR(Number(item.deductions))}</TableCell>
+                  <TableCell className="text-right text-sm font-semibold">{formatPKR(Number(item.net_pay))}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[item.status]}>{item.status}</Badge></TableCell>
                 </TableRow>
               ))}
