@@ -28,7 +28,7 @@ export const AddEmployeeDialog = ({ open, onOpenChange, onSuccess }: AddEmployee
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     full_name: "", email: "", password: "", role: "employee",
-    department: "", position: "", employee_id: "", phone: "",
+    department: "", position: "", employee_id: "", phone: "", basic_salary: "",
   });
 
   const handleSubmit = async () => {

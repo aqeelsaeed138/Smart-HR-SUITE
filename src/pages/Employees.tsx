@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Search, Plus, Edit, User, Mail, Phone, Building2 } from "lucide-react";
+import { formatPKR } from "@/lib/currency";
 import { AddEmployeeDialog } from "@/components/employees/AddEmployeeDialog";
 
 interface Employee {
