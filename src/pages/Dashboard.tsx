@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users, Clock, CalendarDays, DollarSign, TrendingUp, AlertTriangle,
+  Users, Clock, CalendarDays, Banknote, TrendingUp, AlertTriangle,
   CheckCircle, UserCheck, LogIn, LogOut, CalendarClock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

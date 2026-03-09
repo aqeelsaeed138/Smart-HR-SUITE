@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Clock, CalendarDays, CalendarClock,
-  DollarSign, FileText, Settings, LogOut, ChevronLeft, ChevronRight,
+  Banknote, FileText, Settings, LogOut, ChevronLeft, ChevronRight,
   Shield, Menu, X, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
