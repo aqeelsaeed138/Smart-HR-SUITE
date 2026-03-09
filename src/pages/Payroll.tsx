@@ -239,10 +239,10 @@ const Payroll = () => {
               ) : payrollItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium text-sm">{item.profiles?.full_name}</TableCell>
-                  <TableCell className="text-right text-sm">${Number(item.basic_salary).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">${Number(item.tax).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm">${Number(item.deductions).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm font-semibold">${Number(item.net_pay).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm">{formatPKR(Number(item.basic_salary))}</TableCell>
+                  <TableCell className="text-right text-sm text-destructive">{formatPKR(Number(item.tax))}</TableCell>
+                  <TableCell className="text-right text-sm">{formatPKR(Number(item.deductions))}</TableCell>
+                  <TableCell className="text-right text-sm font-semibold">{formatPKR(Number(item.net_pay))}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[item.status]}>{item.status}</Badge></TableCell>
                 </TableRow>
               ))}
