@@ -232,6 +232,40 @@ const Payroll = () => {
               </div>
             </div>
           </Card>
+
+          {/* Payroll Cost Summary Card */}
+          <Card className="p-5 shadow-card col-span-1 sm:col-span-2 lg:col-span-1">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-chart-1/10 shrink-0"><TrendingUp className="w-5 h-5 text-chart-1" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-xs text-muted-foreground font-medium">Monthly Payroll Cost</p>
+                </div>
+                <Select value={summaryPeriodId} onValueChange={setSummaryPeriodId}>
+                  <SelectTrigger className="h-7 text-xs mb-2">
+                    <SelectValue placeholder="Select period…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.filter(p => p.status !== "draft").map(p => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {summaryLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : periodSummary ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground leading-tight">{formatPKR(periodSummary.totalNetPay)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {periodSummary.employeeCount} employees · Tax {formatPKR(periodSummary.totalTax)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No data</p>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Periods Table */}
