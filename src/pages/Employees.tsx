@@ -27,6 +27,7 @@ interface Employee {
   status: string | null;
   hire_date: string | null;
   avatar_url: string | null;
+  basic_salary: number | null;
 }
 
 const statusColors: Record<string, string> = {
