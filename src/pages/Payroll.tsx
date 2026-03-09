@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2, TrendingUp } from "lucide-react";
 import { formatPKR } from "@/lib/currency";
 import { CreatePayrollDialog } from "@/components/payroll/CreatePayrollDialog";
 import { GeneratePayrollDialog } from "@/components/payroll/GeneratePayrollDialog";
@@ -45,6 +46,13 @@ interface PayrollItem {
   profiles?: { full_name: string } | null;
 }
 
+interface PeriodSummary {
+  totalNetPay: number;
+  totalBasicSalary: number;
+  totalTax: number;
+  employeeCount: number;
+}
+
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground border-border",
   preview: "bg-info/10 text-info border-info/20",
@@ -62,6 +70,9 @@ const Payroll = () => {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PayrollPeriod | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [summaryPeriodId, setSummaryPeriodId] = useState<string>("");
+  const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const canManage = hasRole("admin") || hasRole("payroll_officer");
@@ -69,11 +80,39 @@ const Payroll = () => {
   const fetchPeriods = async () => {
     setLoading(true);
     const { data } = await supabase.from("payroll_periods").select("*").order("created_at", { ascending: false });
-    if (data) setPeriods(data as PayrollPeriod[]);
+    if (data) {
+      setPeriods(data as PayrollPeriod[]);
+      // Auto-select the most recent non-draft period for the summary
+      const firstWithItems = (data as PayrollPeriod[]).find(p => p.status !== "draft");
+      if (firstWithItems) setSummaryPeriodId(firstWithItems.id);
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchPeriods(); }, []);
+
+  useEffect(() => {
+    if (!summaryPeriodId) { setPeriodSummary(null); return; }
+    const fetchSummary = async () => {
+      setSummaryLoading(true);
+      const { data } = await supabase
+        .from("payroll_items")
+        .select("basic_salary, tax, deductions, net_pay")
+        .eq("period_id", summaryPeriodId);
+      if (data && data.length > 0) {
+        setPeriodSummary({
+          totalNetPay: data.reduce((s, r) => s + Number(r.net_pay), 0),
+          totalBasicSalary: data.reduce((s, r) => s + Number(r.basic_salary), 0),
+          totalTax: data.reduce((s, r) => s + Number(r.tax), 0),
+          employeeCount: data.length,
+        });
+      } else {
+        setPeriodSummary(null);
+      }
+      setSummaryLoading(false);
+    };
+    fetchSummary();
+  }, [summaryPeriodId]);
 
   const fetchItemsForPeriod = async (period: PayrollPeriod): Promise<PayrollItem[]> => {
     const { data } = await supabase.from("payroll_items").select("*").eq("period_id", period.id);
@@ -165,7 +204,7 @@ const Payroll = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-5 shadow-card">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-primary/10"><Banknote className="w-5 h-5 text-primary" /></div>
@@ -190,6 +229,40 @@ const Payroll = () => {
               <div>
                 <p className="text-xs text-muted-foreground">Paid</p>
                 <p className="text-xl font-bold text-foreground">{periods.filter(p => p.status === "paid").length}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Payroll Cost Summary Card */}
+          <Card className="p-5 shadow-card col-span-1 sm:col-span-2 lg:col-span-1">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-chart-1/10 shrink-0"><TrendingUp className="w-5 h-5 text-chart-1" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-xs text-muted-foreground font-medium">Monthly Payroll Cost</p>
+                </div>
+                <Select value={summaryPeriodId} onValueChange={setSummaryPeriodId}>
+                  <SelectTrigger className="h-7 text-xs mb-2">
+                    <SelectValue placeholder="Select period…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.filter(p => p.status !== "draft").map(p => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {summaryLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : periodSummary ? (
+                  <>
+                    <p className="text-lg font-bold text-foreground leading-tight">{formatPKR(periodSummary.totalNetPay)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {periodSummary.employeeCount} employees · Tax {formatPKR(periodSummary.totalTax)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No data</p>
+                )}
               </div>
             </div>
           </Card>
