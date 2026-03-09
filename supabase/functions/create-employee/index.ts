@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
         position: position || null,
         employee_id: employee_id || null,
         phone: phone || null,
+        basic_salary: basic_salary ? Number(basic_salary) : null,
       }).eq("user_id", userId);
 
       // Delete the auto-created company
