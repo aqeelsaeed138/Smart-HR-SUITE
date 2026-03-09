@@ -17,6 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({ totalEmployees: 0, presentToday: 0, pendingLeaves: 0, onLeave: 0 });
+  const [workforce, setWorkforce] = useState({
+    active: 0,
+    departments: 0,
+    avgHoursToday: null as number | null,
+    payrollCost: null as number | null,
+  });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,7 +41,59 @@ const AdminDashboard = () => {
         onLeave: onLeaveRes.count || 0,
       });
     };
+
+    const fetchWorkforce = async () => {
+      const today = new Date().toISOString().split("T")[0];
+
+      // Active employees & departments in one query
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("status, department");
+
+      const active = profileData?.filter(p => (p.status || "active") === "active").length ?? 0;
+      const departments = new Set(profileData?.map(p => p.department).filter(Boolean)).size;
+
+      // Avg hours from today's completed attendance (clock_in >= today AND clock_out not null)
+      const { data: attData } = await supabase
+        .from("attendance_records")
+        .select("clock_in, clock_out")
+        .gte("clock_in", today)
+        .not("clock_out", "is", null);
+
+      let avgHoursToday: number | null = null;
+      if (attData && attData.length > 0) {
+        const totalHours = attData.reduce((sum, r) => {
+          const diff = (new Date(r.clock_out!).getTime() - new Date(r.clock_in).getTime()) / 3600000;
+          return sum + diff;
+        }, 0);
+        avgHoursToday = Math.round((totalHours / attData.length) * 10) / 10;
+      }
+
+      // Latest confirmed/paid payroll period total net_pay
+      const { data: periodData } = await supabase
+        .from("payroll_periods")
+        .select("id")
+        .in("status", ["confirmed", "paid"])
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let payrollCost: number | null = null;
+      if (periodData?.id) {
+        const { data: itemsData } = await supabase
+          .from("payroll_items")
+          .select("net_pay")
+          .eq("period_id", periodData.id);
+        if (itemsData && itemsData.length > 0) {
+          payrollCost = itemsData.reduce((sum, i) => sum + Number(i.net_pay), 0);
+        }
+      }
+
+      setWorkforce({ active, departments, avgHoursToday, payrollCost });
+    };
+
     fetchStats();
+    fetchWorkforce();
   }, []);
 
   const kpis = [
