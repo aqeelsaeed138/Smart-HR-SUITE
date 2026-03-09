@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2, TrendingUp } from "lucide-react";
 import { formatPKR } from "@/lib/currency";
 import { CreatePayrollDialog } from "@/components/payroll/CreatePayrollDialog";
 import { GeneratePayrollDialog } from "@/components/payroll/GeneratePayrollDialog";
@@ -45,6 +46,13 @@ interface PayrollItem {
   profiles?: { full_name: string } | null;
 }
 
+interface PeriodSummary {
+  totalNetPay: number;
+  totalBasicSalary: number;
+  totalTax: number;
+  employeeCount: number;
+}
+
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground border-border",
   preview: "bg-info/10 text-info border-info/20",
@@ -62,6 +70,9 @@ const Payroll = () => {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PayrollPeriod | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [summaryPeriodId, setSummaryPeriodId] = useState<string>("");
+  const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const canManage = hasRole("admin") || hasRole("payroll_officer");
@@ -69,11 +80,39 @@ const Payroll = () => {
   const fetchPeriods = async () => {
     setLoading(true);
     const { data } = await supabase.from("payroll_periods").select("*").order("created_at", { ascending: false });
-    if (data) setPeriods(data as PayrollPeriod[]);
+    if (data) {
+      setPeriods(data as PayrollPeriod[]);
+      // Auto-select the most recent non-draft period for the summary
+      const firstWithItems = (data as PayrollPeriod[]).find(p => p.status !== "draft");
+      if (firstWithItems) setSummaryPeriodId(firstWithItems.id);
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchPeriods(); }, []);
+
+  useEffect(() => {
+    if (!summaryPeriodId) { setPeriodSummary(null); return; }
+    const fetchSummary = async () => {
+      setSummaryLoading(true);
+      const { data } = await supabase
+        .from("payroll_items")
+        .select("basic_salary, tax, deductions, net_pay")
+        .eq("period_id", summaryPeriodId);
+      if (data && data.length > 0) {
+        setPeriodSummary({
+          totalNetPay: data.reduce((s, r) => s + Number(r.net_pay), 0),
+          totalBasicSalary: data.reduce((s, r) => s + Number(r.basic_salary), 0),
+          totalTax: data.reduce((s, r) => s + Number(r.tax), 0),
+          employeeCount: data.length,
+        });
+      } else {
+        setPeriodSummary(null);
+      }
+      setSummaryLoading(false);
+    };
+    fetchSummary();
+  }, [summaryPeriodId]);
 
   const fetchItemsForPeriod = async (period: PayrollPeriod): Promise<PayrollItem[]> => {
     const { data } = await supabase.from("payroll_items").select("*").eq("period_id", period.id);
