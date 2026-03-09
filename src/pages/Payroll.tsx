@@ -7,12 +7,22 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye } from "lucide-react";
+import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2 } from "lucide-react";
 import { formatPKR } from "@/lib/currency";
 import { CreatePayrollDialog } from "@/components/payroll/CreatePayrollDialog";
 import { GeneratePayrollDialog } from "@/components/payroll/GeneratePayrollDialog";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PayrollPeriod {
   id: string;
@@ -50,6 +60,8 @@ const Payroll = () => {
   const [viewPeriod, setViewPeriod] = useState<PayrollPeriod | null>(null);
   const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PayrollPeriod | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const canManage = hasRole("admin") || hasRole("payroll_officer");
@@ -63,19 +75,60 @@ const Payroll = () => {
 
   useEffect(() => { fetchPeriods(); }, []);
 
+  const fetchItemsForPeriod = async (period: PayrollPeriod): Promise<PayrollItem[]> => {
+    const { data } = await supabase.from("payroll_items").select("*").eq("period_id", period.id);
+    if (!data || data.length === 0) return [];
+    const userIds = [...new Set(data.map((x: any) => x.user_id))];
+    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+    const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p.full_name]));
+    return data.map((x: any) => ({ ...x, profiles: { full_name: profileMap[x.user_id] || "Unknown" } }));
+  };
+
   const viewPayslips = async (period: PayrollPeriod) => {
     setViewPeriod(period);
     setItemsLoading(true);
-    const { data } = await supabase.from("payroll_items").select("*").eq("period_id", period.id);
-    if (data && data.length > 0) {
-      const userIds = [...new Set(data.map((x: any) => x.user_id))];
-      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
-      const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.user_id, p.full_name]));
-      setPayrollItems(data.map((x: any) => ({ ...x, profiles: { full_name: profileMap[x.user_id] || "Unknown" } })));
-    } else {
-      setPayrollItems([]);
-    }
+    const items = await fetchItemsForPeriod(period);
+    setPayrollItems(items);
     setItemsLoading(false);
+  };
+
+  const downloadCSV = async (period: PayrollPeriod) => {
+    const items = await fetchItemsForPeriod(period);
+    if (items.length === 0) {
+      toast({ variant: "destructive", title: "No payslips to download" });
+      return;
+    }
+    const headers = ["Employee", "Basic Salary (PKR)", "Tax (PKR)", "Deductions (PKR)", "Net Pay (PKR)", "Working Days", "Status"];
+    const rows = items.map(item => [
+      item.profiles?.full_name || "Unknown",
+      Number(item.basic_salary).toFixed(2),
+      Number(item.tax).toFixed(2),
+      Number(item.deductions).toFixed(2),
+      Number(item.net_pay).toFixed(2),
+      item.working_days,
+      item.status,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payroll-${period.name.replace(/\s+/g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: `Downloaded payroll for ${period.name}` });
+  };
+
+  const deletePeriod = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await supabase.from("payroll_items").delete().eq("period_id", deleteTarget.id);
+    await supabase.from("payroll_periods").delete().eq("id", deleteTarget.id);
+    await logAudit("delete", "payroll_period", deleteTarget.id);
+    toast({ title: `Payroll period "${deleteTarget.name}" deleted` });
+    setDeleteTarget(null);
+    setDeleting(false);
+    fetchPeriods();
   };
 
   const confirmPayroll = async (periodId: string) => {
@@ -154,7 +207,7 @@ const Payroll = () => {
                 <TableHead>Start</TableHead>
                 <TableHead>End</TableHead>
                 <TableHead>Status</TableHead>
-                {canManage && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -170,32 +223,40 @@ const Payroll = () => {
                   <TableCell className="text-sm">{p.start_date}</TableCell>
                   <TableCell className="text-sm">{p.end_date}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[p.status]}>{p.status}</Badge></TableCell>
-                  {canManage && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {p.status === "draft" && (
-                          <Button variant="ghost" size="sm" onClick={() => setGeneratePeriod(p)}>
-                            <Play className="w-3.5 h-3.5 mr-1" />Generate
-                          </Button>
-                        )}
-                        {(p.status === "preview" || p.status === "confirmed" || p.status === "paid") && (
-                          <Button variant="ghost" size="sm" onClick={() => viewPayslips(p)}>
-                            <Eye className="w-3.5 h-3.5 mr-1" />View
-                          </Button>
-                        )}
-                        {p.status === "preview" && (
-                          <Button variant="ghost" size="sm" onClick={() => confirmPayroll(p.id)}>
-                            <CheckCircle className="w-3.5 h-3.5 mr-1" />Confirm
-                          </Button>
-                        )}
-                        {p.status === "confirmed" && (
-                          <Button variant="ghost" size="sm" onClick={() => markPaid(p.id)}>
-                            <Banknote className="w-3.5 h-3.5 mr-1" />Mark Paid
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1 flex-wrap">
+                      {canManage && p.status === "draft" && (
+                        <Button variant="ghost" size="sm" onClick={() => setGeneratePeriod(p)}>
+                          <Play className="w-3.5 h-3.5 mr-1" />Generate
+                        </Button>
+                      )}
+                      {(p.status === "preview" || p.status === "confirmed" || p.status === "paid") && (
+                        <Button variant="ghost" size="sm" onClick={() => viewPayslips(p)}>
+                          <Eye className="w-3.5 h-3.5 mr-1" />View
+                        </Button>
+                      )}
+                      {(p.status === "preview" || p.status === "confirmed" || p.status === "paid") && (
+                        <Button variant="ghost" size="sm" onClick={() => downloadCSV(p)}>
+                          <Download className="w-3.5 h-3.5 mr-1" />Download
+                        </Button>
+                      )}
+                      {canManage && p.status === "preview" && (
+                        <Button variant="ghost" size="sm" onClick={() => confirmPayroll(p.id)}>
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" />Confirm
+                        </Button>
+                      )}
+                      {canManage && p.status === "confirmed" && (
+                        <Button variant="ghost" size="sm" onClick={() => markPaid(p.id)}>
+                          <Banknote className="w-3.5 h-3.5 mr-1" />Mark Paid
+                        </Button>
+                      )}
+                      {canManage && (
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(p)}>
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -248,8 +309,37 @@ const Payroll = () => {
               ))}
             </TableBody>
           </Table>
+          {viewPeriod && (
+            <DialogFooter className="mt-2">
+              <Button variant="outline" onClick={() => downloadCSV(viewPeriod)}>
+                <Download className="w-4 h-4 mr-2" />Download CSV
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payroll Period?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{deleteTarget?.name}</strong> and all its payslips. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={deletePeriod}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
