@@ -223,6 +223,20 @@ const Employees = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Basic Salary (PKR)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">PKR</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    className="pl-12"
+                    value={form.basic_salary}
+                    onChange={e => setForm({...form, basic_salary: e.target.value})}
+                    placeholder="50000"
+                  />
+                </div>
+              </div>
               <div className="col-span-2 flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSave}>Save Changes</Button>
