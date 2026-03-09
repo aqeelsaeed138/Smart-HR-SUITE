@@ -17,6 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({ totalEmployees: 0, presentToday: 0, pendingLeaves: 0, onLeave: 0 });
+  const [workforce, setWorkforce] = useState({
+    active: 0,
+    departments: 0,
+    avgHoursToday: null as number | null,
+    payrollCost: null as number | null,
+  });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,7 +41,59 @@ const AdminDashboard = () => {
         onLeave: onLeaveRes.count || 0,
       });
     };
+
+    const fetchWorkforce = async () => {
+      const today = new Date().toISOString().split("T")[0];
+
+      // Active employees & departments in one query
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("status, department");
+
+      const active = profileData?.filter(p => (p.status || "active") === "active").length ?? 0;
+      const departments = new Set(profileData?.map(p => p.department).filter(Boolean)).size;
+
+      // Avg hours from today's completed attendance (clock_in >= today AND clock_out not null)
+      const { data: attData } = await supabase
+        .from("attendance_records")
+        .select("clock_in, clock_out")
+        .gte("clock_in", today)
+        .not("clock_out", "is", null);
+
+      let avgHoursToday: number | null = null;
+      if (attData && attData.length > 0) {
+        const totalHours = attData.reduce((sum, r) => {
+          const diff = (new Date(r.clock_out!).getTime() - new Date(r.clock_in).getTime()) / 3600000;
+          return sum + diff;
+        }, 0);
+        avgHoursToday = Math.round((totalHours / attData.length) * 10) / 10;
+      }
+
+      // Latest confirmed/paid payroll period total net_pay
+      const { data: periodData } = await supabase
+        .from("payroll_periods")
+        .select("id")
+        .in("status", ["confirmed", "paid"])
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let payrollCost: number | null = null;
+      if (periodData?.id) {
+        const { data: itemsData } = await supabase
+          .from("payroll_items")
+          .select("net_pay")
+          .eq("period_id", periodData.id);
+        if (itemsData && itemsData.length > 0) {
+          payrollCost = itemsData.reduce((sum, i) => sum + Number(i.net_pay), 0);
+        }
+      }
+
+      setWorkforce({ active, departments, avgHoursToday, payrollCost });
+    };
+
     fetchStats();
+    fetchWorkforce();
   }, []);
 
   const kpis = [
@@ -83,18 +141,32 @@ const AdminDashboard = () => {
           <TrendingUp className="w-4 h-4 text-primary" /> Workforce Overview
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Active", value: stats.totalEmployees, icon: CheckCircle, color: "text-success" },
-            { label: "Departments", value: "—", icon: Users, color: "text-primary" },
-            { label: "Avg. Hours", value: "—", icon: Clock, color: "text-info" },
-            { label: "Payroll Cost", value: "—", icon: Banknote, color: "text-warning" },
-          ].map((item) => (
-            <div key={item.label} className="text-center p-3 rounded-lg bg-muted/50">
-              <item.icon className={`w-5 h-5 mx-auto mb-1 ${item.color}`} />
-              <p className="text-lg font-bold text-foreground">{item.value}</p>
-              <p className="text-xs text-muted-foreground">{item.label}</p>
-            </div>
-          ))}
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <CheckCircle className="w-5 h-5 mx-auto mb-1 text-success" />
+            <p className="text-lg font-bold text-foreground">{workforce.active}</p>
+            <p className="text-xs text-muted-foreground">Active</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="text-lg font-bold text-foreground">{workforce.departments > 0 ? workforce.departments : "—"}</p>
+            <p className="text-xs text-muted-foreground">Departments</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Clock className="w-5 h-5 mx-auto mb-1 text-info" />
+            <p className="text-lg font-bold text-foreground">
+              {workforce.avgHoursToday !== null ? `${workforce.avgHoursToday}h` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">Avg. Hours Today</p>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/50">
+            <Banknote className="w-5 h-5 mx-auto mb-1 text-warning" />
+            <p className="text-lg font-bold text-foreground">
+              {workforce.payrollCost !== null
+                ? `Rs ${(workforce.payrollCost / 1000).toFixed(0)}K`
+                : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">Payroll Cost</p>
+          </div>
         </div>
       </Card>
     </>
