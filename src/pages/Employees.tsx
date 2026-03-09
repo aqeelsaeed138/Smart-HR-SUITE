@@ -50,7 +50,7 @@ const Employees = () => {
 
   const [form, setForm] = useState({
     full_name: "", email: "", department: "", position: "",
-    employee_id: "", phone: "", status: "active", hire_date: ""
+    employee_id: "", phone: "", status: "active", hire_date: "", basic_salary: ""
   });
 
   const fetchEmployees = async () => {
