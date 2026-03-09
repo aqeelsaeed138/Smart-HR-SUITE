@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Search, Plus, Edit, User, Mail, Phone, Building2 } from "lucide-react";
+import { formatPKR } from "@/lib/currency";
 import { AddEmployeeDialog } from "@/components/employees/AddEmployeeDialog";
 
 interface Employee {
@@ -26,6 +27,7 @@ interface Employee {
   status: string | null;
   hire_date: string | null;
   avatar_url: string | null;
+  basic_salary: number | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -48,7 +50,7 @@ const Employees = () => {
 
   const [form, setForm] = useState({
     full_name: "", email: "", department: "", position: "",
-    employee_id: "", phone: "", status: "active", hire_date: ""
+    employee_id: "", phone: "", status: "active", hire_date: "", basic_salary: ""
   });
 
   const fetchEmployees = async () => {
@@ -73,7 +75,8 @@ const Employees = () => {
       full_name: emp.full_name, email: emp.email,
       department: emp.department || "", position: emp.position || "",
       employee_id: emp.employee_id || "", phone: emp.phone || "",
-      status: emp.status || "active", hire_date: emp.hire_date || ""
+      status: emp.status || "active", hire_date: emp.hire_date || "",
+      basic_salary: emp.basic_salary != null ? String(emp.basic_salary) : "",
     });
     setDialogOpen(true);
   };
@@ -88,6 +91,7 @@ const Employees = () => {
       phone: form.phone || null,
       status: form.status || "active",
       hire_date: form.hire_date || null,
+      basic_salary: form.basic_salary ? Number(form.basic_salary) : null,
     }).eq("id", editEmployee.id);
 
     if (error) {
@@ -134,15 +138,16 @@ const Employees = () => {
                 <TableHead>Employee</TableHead>
                 <TableHead className="hidden md:table-cell">Department</TableHead>
                 <TableHead className="hidden md:table-cell">Position</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Basic Salary</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 {canManage && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Loading...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No employees found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No employees found</TableCell></TableRow>
               ) : filtered.map((emp) => (
                 <TableRow key={emp.id}>
                   <TableCell>
@@ -158,6 +163,9 @@ const Employees = () => {
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{emp.department || "—"}</TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{emp.position || "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-right font-medium text-foreground">
+                    {emp.basic_salary != null ? formatPKR(emp.basic_salary) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className={statusColors[emp.status || "active"]}>
                       {(emp.status || "active").replace("_", " ")}
@@ -218,6 +226,20 @@ const Employees = () => {
                     <SelectItem value="terminated">Terminated</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Basic Salary (PKR)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">PKR</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    className="pl-12"
+                    value={form.basic_salary}
+                    onChange={e => setForm({...form, basic_salary: e.target.value})}
+                    placeholder="50000"
+                  />
+                </div>
               </div>
               <div className="col-span-2 flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

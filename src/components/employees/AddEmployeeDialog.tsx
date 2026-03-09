@@ -28,7 +28,7 @@ export const AddEmployeeDialog = ({ open, onOpenChange, onSuccess }: AddEmployee
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     full_name: "", email: "", password: "", role: "employee",
-    department: "", position: "", employee_id: "", phone: "",
+    department: "", position: "", employee_id: "", phone: "", basic_salary: "",
   });
 
   const handleSubmit = async () => {
@@ -55,7 +55,7 @@ export const AddEmployeeDialog = ({ open, onOpenChange, onSuccess }: AddEmployee
     }
 
     toast({ title: "Employee added successfully" });
-    setForm({ full_name: "", email: "", password: "", role: "employee", department: "", position: "", employee_id: "", phone: "" });
+    setForm({ full_name: "", email: "", password: "", role: "employee", department: "", position: "", employee_id: "", phone: "", basic_salary: "" });
     onOpenChange(false);
     onSuccess();
   };
@@ -105,6 +105,20 @@ export const AddEmployeeDialog = ({ open, onOpenChange, onSuccess }: AddEmployee
           <div className="space-y-2">
             <Label>Phone</Label>
             <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div className="col-span-2 space-y-2">
+            <Label>Basic Salary (PKR)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">PKR</span>
+              <Input
+                type="number"
+                min="0"
+                className="pl-12"
+                value={form.basic_salary}
+                onChange={e => setForm({ ...form, basic_salary: e.target.value })}
+                placeholder="50000"
+              />
+            </div>
           </div>
           <div className="col-span-2 flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
