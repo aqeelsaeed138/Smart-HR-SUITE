@@ -15,9 +15,9 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const { signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,28 +36,10 @@ const Signup = () => {
     if (error) {
       toast({ variant: "destructive", title: "Signup failed", description: error.message });
     } else {
-      setSuccess(true);
+      toast({ title: "Account created!", description: "Welcome! Please sign in to continue." });
+      navigate("/login");
     }
   };
-
-  if (success) {
-    return (
-      <AuthLayout>
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-            <UserPlus className="w-8 h-8 text-success" />
-          </div>
-          <h2 className="font-display text-2xl font-bold text-foreground">Check your email</h2>
-          <p className="text-muted-foreground text-sm">
-            We've sent a verification link to <strong>{email}</strong>. Please verify your email to continue.
-          </p>
-          <Link to="/login">
-            <Button variant="outline" className="mt-4">Back to login</Button>
-          </Link>
-        </div>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout>
