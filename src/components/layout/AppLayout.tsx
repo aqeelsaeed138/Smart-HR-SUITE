@@ -40,8 +40,8 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <span className="font-display text-base font-bold text-sidebar-foreground block">SEMS</span>
-            <span className="text-[10px] text-sidebar-foreground/60 block">Employee Management</span>
+            <span className="font-display text-base font-bold text-sidebar-foreground block">EMS</span>
+            <span className="text-[10px] text-sidebar-foreground/60 block">Employee Management System</span>
           </div>
         )}
       </div>
