@@ -23,9 +23,9 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => {
             <div className="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center">
               <Shield className="w-5 h-5" />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight">SEMS</span>
+            <span className="font-display text-xl font-bold tracking-tight">EMS</span>
           </div>
-          <p className="text-sm opacity-70 ml-[52px]">Smart Employee Management</p>
+          <p className="text-sm opacity-70 ml-[52px]">Employee Management System</p>
         </div>
 
         <div className="relative z-10 space-y-6">
