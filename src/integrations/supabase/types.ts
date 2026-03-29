@@ -147,6 +147,44 @@ export type Database = {
         }
         Relationships: []
       }
+      deduction_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          value: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          value?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deduction_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           company_id: string | null
@@ -181,6 +219,51 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_deductions: {
+        Row: {
+          company_id: string
+          created_at: string
+          deduction_type_id: string
+          id: string
+          is_active: boolean
+          override_value: number | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          deduction_type_id: string
+          id?: string
+          is_active?: boolean
+          override_value?: number | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          deduction_type_id?: string
+          id?: string
+          is_active?: boolean
+          override_value?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_deductions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_deductions_deduction_type_id_fkey"
+            columns: ["deduction_type_id"]
+            isOneToOne: false
+            referencedRelation: "deduction_types"
             referencedColumns: ["id"]
           },
         ]
@@ -285,6 +368,44 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_item_deductions: {
+        Row: {
+          calculated_amount: number
+          created_at: string
+          deduction_type: string
+          deduction_type_name: string
+          id: string
+          payroll_item_id: string
+          value: number
+        }
+        Insert: {
+          calculated_amount?: number
+          created_at?: string
+          deduction_type?: string
+          deduction_type_name: string
+          id?: string
+          payroll_item_id: string
+          value?: number
+        }
+        Update: {
+          calculated_amount?: number
+          created_at?: string
+          deduction_type?: string
+          deduction_type_name?: string
+          id?: string
+          payroll_item_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_item_deductions_payroll_item_id_fkey"
+            columns: ["payroll_item_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_items"
             referencedColumns: ["id"]
           },
         ]
