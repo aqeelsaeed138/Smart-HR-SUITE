@@ -134,7 +134,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
           </Button>
           <div className="lg:hidden flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
-            <span className="font-display font-bold text-foreground">SEMS</span>
+            <span className="font-display font-bold text-foreground">EMS</span>
           </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
