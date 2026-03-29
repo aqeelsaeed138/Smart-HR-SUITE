@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2, TrendingUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Banknote, FileText, Download, Plus, Play, CheckCircle, Eye, Trash2, TrendingUp, Settings, UserPlus } from "lucide-react";
 import { formatPKR } from "@/lib/currency";
 import { CreatePayrollDialog } from "@/components/payroll/CreatePayrollDialog";
 import { GeneratePayrollDialog } from "@/components/payroll/GeneratePayrollDialog";
+import { ManageDeductionsDialog } from "@/components/payroll/ManageDeductionsDialog";
+import { AssignDeductionDialog } from "@/components/payroll/AssignDeductionDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -46,6 +49,13 @@ interface PayrollItem {
   profiles?: { full_name: string } | null;
 }
 
+interface DeductionBreakdown {
+  deduction_type_name: string;
+  deduction_type: string;
+  value: number;
+  calculated_amount: number;
+}
+
 interface PeriodSummary {
   totalNetPay: number;
   totalBasicSalary: number;
@@ -73,6 +83,9 @@ const Payroll = () => {
   const [summaryPeriodId, setSummaryPeriodId] = useState<string>("");
   const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [manageDeductionsOpen, setManageDeductionsOpen] = useState(false);
+  const [assignDeductionsOpen, setAssignDeductionsOpen] = useState(false);
+  const [deductionBreakdowns, setDeductionBreakdowns] = useState<Record<string, DeductionBreakdown[]>>({});
   const { hasRole, user } = useAuth();
   const { toast } = useToast();
   const canManage = hasRole("admin") || hasRole("payroll_officer");
@@ -82,7 +95,6 @@ const Payroll = () => {
     const { data } = await supabase.from("payroll_periods").select("*").order("created_at", { ascending: false });
     if (data) {
       setPeriods(data as PayrollPeriod[]);
-      // Auto-select the most recent non-draft period for the summary
       const firstWithItems = (data as PayrollPeriod[]).find(p => p.status !== "draft");
       if (firstWithItems) setSummaryPeriodId(firstWithItems.id);
     }
@@ -123,11 +135,26 @@ const Payroll = () => {
     return data.map((x: any) => ({ ...x, profiles: { full_name: profileMap[x.user_id] || "Unknown" } }));
   };
 
+  const fetchDeductionBreakdowns = async (itemIds: string[]) => {
+    if (itemIds.length === 0) return;
+    const { data } = await supabase
+      .from("payroll_item_deductions")
+      .select("payroll_item_id, deduction_type_name, deduction_type, value, calculated_amount")
+      .in("payroll_item_id", itemIds);
+    const map: Record<string, DeductionBreakdown[]> = {};
+    for (const row of (data || []) as any[]) {
+      if (!map[row.payroll_item_id]) map[row.payroll_item_id] = [];
+      map[row.payroll_item_id].push(row);
+    }
+    setDeductionBreakdowns(map);
+  };
+
   const viewPayslips = async (period: PayrollPeriod) => {
     setViewPeriod(period);
     setItemsLoading(true);
     const items = await fetchItemsForPeriod(period);
     setPayrollItems(items);
+    await fetchDeductionBreakdowns(items.map(i => i.id));
     setItemsLoading(false);
   };
 
@@ -161,6 +188,11 @@ const Payroll = () => {
   const deletePeriod = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    // Delete breakdowns first (cascade should handle, but be safe)
+    const { data: items } = await supabase.from("payroll_items").select("id").eq("period_id", deleteTarget.id);
+    if (items && items.length > 0) {
+      await supabase.from("payroll_item_deductions").delete().in("payroll_item_id", items.map((i: any) => i.id));
+    }
     await supabase.from("payroll_items").delete().eq("period_id", deleteTarget.id);
     await supabase.from("payroll_periods").delete().eq("id", deleteTarget.id);
     await logAudit("delete", "payroll_period", deleteTarget.id);
@@ -194,12 +226,20 @@ const Payroll = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">Payroll</h1>
-            <p className="text-muted-foreground text-sm mt-1">Manage payroll periods and payslips</p>
+            <p className="text-muted-foreground text-sm mt-1">Manage payroll periods, deductions, and payslips</p>
           </div>
           {canManage && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />New Period
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" onClick={() => setManageDeductionsOpen(true)}>
+                <Settings className="w-4 h-4 mr-2" />Deduction Types
+              </Button>
+              <Button variant="outline" onClick={() => setAssignDeductionsOpen(true)}>
+                <UserPlus className="w-4 h-4 mr-2" />Assign Deductions
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />New Period
+              </Button>
+            </div>
           )}
         </div>
 
@@ -347,6 +387,8 @@ const Payroll = () => {
           periodName={generatePeriod.name}
         />
       )}
+      <ManageDeductionsDialog open={manageDeductionsOpen} onOpenChange={setManageDeductionsOpen} />
+      <AssignDeductionDialog open={assignDeductionsOpen} onOpenChange={setAssignDeductionsOpen} />
 
       {/* Payslips View Dialog */}
       <Dialog open={!!viewPeriod} onOpenChange={(o) => !o && setViewPeriod(null)}>
@@ -354,34 +396,65 @@ const Payroll = () => {
           <DialogHeader>
             <DialogTitle className="font-display">Payslips — {viewPeriod?.name}</DialogTitle>
           </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead className="text-right">Basic Salary</TableHead>
-                <TableHead className="text-right">Tax</TableHead>
-                <TableHead className="text-right">Deductions</TableHead>
-                <TableHead className="text-right">Net Pay</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itemsLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-              ) : payrollItems.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No payslips generated</TableCell></TableRow>
-              ) : payrollItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-sm">{item.profiles?.full_name}</TableCell>
-                  <TableCell className="text-right text-sm">{formatPKR(Number(item.basic_salary))}</TableCell>
-                  <TableCell className="text-right text-sm text-destructive">{formatPKR(Number(item.tax))}</TableCell>
-                  <TableCell className="text-right text-sm">{formatPKR(Number(item.deductions))}</TableCell>
-                  <TableCell className="text-right text-sm font-semibold">{formatPKR(Number(item.net_pay))}</TableCell>
-                  <TableCell><Badge variant="outline" className={statusColors[item.status]}>{item.status}</Badge></TableCell>
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead className="text-right">Basic Salary</TableHead>
+                  <TableHead className="text-right">Tax</TableHead>
+                  <TableHead className="text-right">Deductions</TableHead>
+                  <TableHead className="text-right">Net Pay</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {itemsLoading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                ) : payrollItems.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No payslips generated</TableCell></TableRow>
+                ) : payrollItems.map((item) => {
+                  const breakdown = deductionBreakdowns[item.id] || [];
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium text-sm">{item.profiles?.full_name}</TableCell>
+                      <TableCell className="text-right text-sm">{formatPKR(Number(item.basic_salary))}</TableCell>
+                      <TableCell className="text-right text-sm text-destructive">{formatPKR(Number(item.tax))}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {breakdown.length > 0 ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help underline decoration-dotted underline-offset-4 text-destructive">
+                                {formatPKR(Number(item.deductions))}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-xs">
+                              <div className="space-y-1 text-xs">
+                                {breakdown.map((bd, i) => (
+                                  <div key={i} className="flex justify-between gap-4">
+                                    <span>{bd.deduction_type_name}</span>
+                                    <span className="font-medium">{formatPKR(bd.calculated_amount)}</span>
+                                  </div>
+                                ))}
+                                <div className="border-t border-border pt-1 flex justify-between gap-4 font-semibold">
+                                  <span>Total</span>
+                                  <span>{formatPKR(Number(item.deductions))}</span>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span>{formatPKR(Number(item.deductions))}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-semibold">{formatPKR(Number(item.net_pay))}</TableCell>
+                      <TableCell><Badge variant="outline" className={statusColors[item.status]}>{item.status}</Badge></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
           {viewPeriod && (
             <DialogFooter className="mt-2">
               <Button variant="outline" onClick={() => downloadCSV(viewPeriod)}>
