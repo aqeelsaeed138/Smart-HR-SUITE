@@ -48,7 +48,7 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
         <p className="relative z-10 text-xs opacity-50">
-          © {new Date().getFullYear()} Smart Employee Management System
+          © {new Date().getFullYear()} Employee Management System
         </p>
       </div>
 
